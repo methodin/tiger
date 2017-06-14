@@ -5,16 +5,16 @@ use std::fs::{self,File};
 use std::io::prelude::*;
 
 /**
- * Create a new change in the current project
+ * Perform a specific change request
  */
-pub fn perform(project: &mut project::Project, action: &String, args: &[String]) -> bool{
-    match action.as_ref() {
-        "set" => set(project, args),
+pub fn perform(project: &mut project::Project, args: &mut Vec<String>) -> bool {
+    match args[0].as_ref() {
+        "set" => set(project, &args),
         "ls" => ls(project),
         "clear" => clear(project),
-        "rm" => rm(project, args),
+        "rm" => rm(project, &args),
         "sync" => sync(project),
-        _ => panic!("Not a valid action"),
+        _ => panic!("Not a valid data action"),
     }
 }
 
@@ -22,12 +22,12 @@ pub fn perform(project: &mut project::Project, action: &String, args: &[String])
  * Create a new change in the current project
  */
 fn set(project: &mut project::Project, args: &[String]) -> bool {
-    if args.len() < 2 {
+    if args.len() < 3 {
         panic!("You must provide at least 2 arguments to change");
     }
 
-    let timing = args[0].to_owned();
-    let file = args[1].to_owned();
+    let timing = args[1].to_owned();
+    let file = args[2].to_owned();
 
     // Copy file from source into project
     let project_dir = project.get_path();
@@ -108,12 +108,12 @@ fn clear(project: &mut project::Project) -> bool {
  * Create a new change in the current project
  */
 fn rm(project: &mut project::Project, args: &[String]) -> bool {
-    if args.len() < 1 {
+    if args.len() < 2 {
         panic!("You must provide a hash to remove");
     }
 
     // Lookup and find matching change
-    let hash = args[0].to_owned();
+    let hash = args[1].to_owned();
     let result = project.find_change_by_hash(&hash)
         .expect("No change with that hash found");
 

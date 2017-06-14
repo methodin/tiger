@@ -79,6 +79,26 @@ impl Change {
         fs::remove_file(target)
             .expect("Could not remove file");
     }
+
+    /**
+     * Read file content
+     */
+    pub fn read_file(&self, project: &Project) -> String {
+        let project_dir = &project.get_path();
+        let target = format!("{}/{}", project_dir, &self.file);
+
+        // Open file
+        let mut file = match File::open(&target) {
+            Err(_) => panic!("couldn't read {}", target),
+            Ok(file) => file,
+        };
+
+        // Read file contents
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("Could not read input file");
+
+        contents
+    }
 }
 
 #[derive(Serialize, Deserialize)]

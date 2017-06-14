@@ -10,6 +10,7 @@ use getopts::Options;
 use std::env; 
 
 pub mod project;
+mod execute;
 mod change;
 
 /**
@@ -19,22 +20,27 @@ mod change;
 fn do_work(directive: &str, mut args: Vec<String>) {
     match directive {
         "init" => project::create(args.as_slice()),
+        "run" => execute::run(args.as_slice()),
         _ => {
             let mut project = project::load(&directive);
+
+            assert!(args.len() > 0, "You must provide at least one parameter");
 
             let mut rest: Vec<_> = args.drain(1..).collect();
             let qualifier = &args[0];
 
-            let args: Vec<_> = rest.drain(1..).collect();
-            let action = &rest[0];
-
-            let updated = match qualifier.as_ref() {
-                "change" => change::perform(&mut project, &action, &args),
-                _ => panic!("{} is not valid", &qualifier),
-            };
-
-            if updated {
-                project::save(&project);
+            match qualifier.as_ref() {
+                "simulate" => {
+                    execute::simulate(&project);
+                    return;
+                },
+                "data" => {
+                    if change::perform(&mut project, &mut rest) {
+                        project::save(&project);
+                    }
+                },
+                _ => assert!(rest.len() > 0, 
+                    format!("{} is unknown command", qualifier)),
             }
         }
     }
@@ -60,7 +66,7 @@ fn main() {
 
     // Defined options available for command
     let mut opts = Options::new();
-    // opts.optopt("o", "", "set output file name", "NAME");
+    opts.optopt("c", "", "set the config file", "CONFIG");
     opts.optflag("h", "help", "print this help menu");
 
     // Match available options with args passed in
