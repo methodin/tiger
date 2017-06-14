@@ -1,0 +1,14 @@
+[package]
+
+name = "tiger"
+version = "0.0.1"
+authors = [ "Derek Woods <derekrw@gmail.com>" ]
+
+[dependencies] 
+
+getopts = "0.2"
+yaml-rust = "*"
+serde = "1.0.8"
+serde_derive = "1.0.8"
+serde_json= "1.0.2"
+md5 = "0.3.4"
