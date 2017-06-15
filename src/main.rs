@@ -6,12 +6,13 @@ extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 
-use getopts::Options;
-use std::env; 
-
 pub mod project;
 mod execute;
-mod change;
+pub mod change;
+
+use getopts::Options;
+use std::env; 
+use project::Project;
 
 /**
  * Uses:
@@ -19,7 +20,7 @@ mod change;
  */
 fn do_work(directive: &str, mut args: Vec<String>) {
     match directive {
-        "init" => project::create(args.as_slice()),
+        "init" => Project::create(&args[0]),
         "run" => execute::run(args.as_slice()),
         _ => {
             let mut project = project::load(&directive);

@@ -1,3 +1,4 @@
+use change::{self,Change};
 use std::env;
 use std::fmt;
 use std::fs::{self, DirBuilder};
@@ -48,58 +49,6 @@ impl FromStr for Timing {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Default)]
-pub struct Change {
-    pub timing: Timing,
-    pub file: String,
-    pub hash: String,
-    #[serde(default)]
-    pub source_file: String
-}
-/**
- * Implement Display for Change struct
- */
-impl fmt::Display for Change {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "| {timing} | {file:100} | {hash:32} |",
-            timing = self.timing,
-            file = self.file,
-            hash = self.hash)
-    }
-}
-
-impl Change {
-    /**
-     * Remove the file from the filesystem
-     */
-    pub fn remove_file(self, project: &Project) {
-        let project_dir = &project.get_path();
-        let target = format!("{}/{}", project_dir, &self.file);
-
-        fs::remove_file(target)
-            .expect("Could not remove file");
-    }
-
-    /**
-     * Read file content
-     */
-    pub fn read_file(&self, project: &Project) -> String {
-        let project_dir = &project.get_path();
-        let target = format!("{}/{}", project_dir, &self.file);
-
-        // Open file
-        let mut file = match File::open(&target) {
-            Err(_) => panic!("couldn't read {}", target),
-            Ok(file) => file,
-        };
-
-        // Read file contents
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).expect("Could not read input file");
-
-        contents
-    }
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct Project {
@@ -187,6 +136,89 @@ impl Project{
             Ok(_) => println!("Successfully created project file {}", display),
         }
     }
+
+    /**
+     * Create a new project in the current directory
+     * Will dump a project json file in the directory specificed
+     */
+    pub fn create(name: &String) {
+        let dir = env::current_dir().unwrap();
+
+        let project_dir = format!("{}/tiger/{}", dir.display(), name);
+
+        // Make sure project doesn't already exist
+        if let Ok(_) = fs::metadata(&project_dir) {
+            println!("Project {} already exists", name);
+            return;
+        }
+
+        // Create new dir
+        DirBuilder::new()
+            .recursive(true)
+            .create(&project_dir).unwrap();
+
+        println!("Creating project {} in current dir: {}", name, dir.display());
+
+        // Create project instance
+        let project = Project {
+            name: name.to_owned(),
+            changes: Vec::new()
+        };
+
+        project.save();
+    }
+
+    /**
+     * Clear all changes in project 
+     */
+    pub fn clear(&mut self) -> bool {
+        //TODO iterate and delete all files
+        println!("Clearing all changes from project");
+        self.changes.clear();
+
+        true
+    }
+
+    /**
+     * List all changes in project 
+     */
+    pub fn ls(&mut self) -> bool {
+        println!("> Current changes in project:\n");
+        let line = format!("|-{dash:-<10}-|-{dash:-<100}-|-{dash:-<32}-|", dash="-");
+        println!("{}", line);
+        println!("| {timing:10} | {file:100} | {hash:32} |", timing="Timing", file="File", hash="Hash");
+        println!("{}", line);
+        for change in &self.changes {
+            println!("{}", change);
+        }
+        println!("{}\n", line);
+
+        false
+    }
+
+    /**
+     * Syncs all changes
+     */
+    pub fn sync(&mut self) -> bool {
+        let project_dir = &self.get_path();
+
+        for change in self.changes.iter_mut() {
+            let target = format!("{}/{}", project_dir, &change.file);
+            let hashed = change::hash_file(&change.source_file);
+
+            // Check if file changed
+            if hashed != change.hash {
+                fs::copy(&change.source_file, &target)
+                    .expect("Could not copy source file");
+
+                println!("Syncing change {} -> new hash {}", &change.hash, hashed);
+
+                change.hash = hashed;
+            }
+        }
+
+        true
+    }
 }
 
 pub struct SearchResult {
@@ -195,37 +227,6 @@ pub struct SearchResult {
 }
 
 const PROJECT_FILE: &str = "project.json";
-
-/**
- * Create a new project in the current directory
- * Will dump a project json file in the directory specificed
- */
-pub fn create(args: &[String]) {
-	let dir = env::current_dir().unwrap();
-
-    let project_dir = format!("{}/tiger/{}", dir.display(), args[0]);
-
-    // Make sure project doesn't already exist
-    if let Ok(_) = fs::metadata(&project_dir) {
-        println!("Project {} already exists", args[0]);
-        return;
-    }
-
-    // Create new dir
-    DirBuilder::new()
-        .recursive(true)
-        .create(&project_dir).unwrap();
-
-    println!("Creating project {} in current dir: {}", args[0], dir.display());
-
-    // Create project instance
-    let project = Project {
-        name: args[0].to_owned(),
-        changes: Vec::new()
-    };
-
-    project.save();
-}
 
 /**
  * Load an existing project from a project file

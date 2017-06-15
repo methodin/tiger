@@ -1,19 +1,74 @@
-use project;
+use project::{Project,Timing};
 use md5;
+use std::fmt;
 use std::path::Path;
 use std::fs::{self,File};
 use std::io::prelude::*;
 
 /**
+ * The change struct
+ */
+#[derive(Clone, Serialize, Deserialize, Default)]
+pub struct Change {
+    pub timing: Timing,
+    pub file: String,
+    pub hash: String,
+    #[serde(default)]
+    pub source_file: String
+}
+
+/**
+ * Implement Display for Change struct
+ */
+impl fmt::Display for Change {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "| {timing} | {file:100} | {hash:32} |",
+            timing = self.timing,
+            file = self.file,
+            hash = self.hash)
+    }
+}
+
+impl Change {
+    // Remove the file from the filesystem
+    pub fn remove_file(self, project: &Project) {
+        let project_dir = &project.get_path();
+        let target = format!("{}/{}", project_dir, &self.file);
+
+        fs::remove_file(target)
+            .expect("Could not remove file");
+    }
+
+    // Read file contents
+    pub fn read_file(&self, project: &Project) -> String {
+        let project_dir = &project.get_path();
+        let target = format!("{}/{}", project_dir, &self.file);
+
+        // Open file
+        let mut file = match File::open(&target) {
+            Err(_) => panic!("couldn't read {}", target),
+            Ok(file) => file,
+        };
+
+        // Read file contents
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("Could not read input file");
+
+        contents
+    }
+}
+
+
+/**
  * Perform a specific change request
  */
-pub fn perform(project: &mut project::Project, args: &mut Vec<String>) -> bool {
+pub fn perform(project: &mut Project, args: &mut Vec<String>) -> bool {
     match args[0].as_ref() {
         "set" => set(project, &args),
-        "ls" => ls(project),
-        "clear" => clear(project),
+        "ls" => project.ls(),
+        "clear" => project.clear(),
         "rm" => rm(project, &args),
-        "sync" => sync(project),
+        "sync" => project.sync(),
         _ => panic!("Not a valid data action"),
     }
 }
@@ -21,7 +76,7 @@ pub fn perform(project: &mut project::Project, args: &mut Vec<String>) -> bool {
 /**
  * Create a new change in the current project
  */
-fn set(project: &mut project::Project, args: &[String]) -> bool {
+fn set(project: &mut Project, args: &[String]) -> bool {
     if args.len() < 3 {
         panic!("You must provide at least 2 arguments to change");
     }
@@ -56,8 +111,8 @@ fn set(project: &mut project::Project, args: &[String]) -> bool {
     // Update or add change
     if index == 9999 {
         // Add change to change list
-        let change = project::Change {
-            timing: timing.parse::<project::Timing>()
+        let change = Change {
+            timing: timing.parse::<Timing>()
                 .expect("Invalid timing value"),
             file: file_name.to_string(),
             hash: hashed,
@@ -66,7 +121,7 @@ fn set(project: &mut project::Project, args: &[String]) -> bool {
         project.add_change(change);
     } else {
         let mut change = project.changes.get_mut(index).unwrap();
-        change.timing = timing.parse::<project::Timing>()
+        change.timing = timing.parse::<Timing>()
             .expect("Invalid timing value");
         change.file = file_name.to_string();
         change.hash = hashed;
@@ -76,38 +131,11 @@ fn set(project: &mut project::Project, args: &[String]) -> bool {
     true
 }
 
-/**
- * List all changes in project 
- */
-fn ls(project: &mut project::Project) -> bool {
-    println!("> Current changes in project:\n");
-    let line = format!("|-{dash:-<10}-|-{dash:-<100}-|-{dash:-<32}-|", dash="-");
-    println!("{}", line);
-    println!("| {timing:10} | {file:100} | {hash:32} |", timing="Timing", file="File", hash="Hash");
-    println!("{}", line);
-    for change in &project.changes {
-        println!("{}", change);
-    }
-    println!("{}\n", line);
-
-    false
-}
-
-/**
- * Clear all changes in project 
- */
-fn clear(project: &mut project::Project) -> bool {
-    //TODO iterate and delete all files
-    println!("Clearing all changes from project");
-    project.changes.clear();
-
-    true
-}
 
 /**
  * Create a new change in the current project
  */
-fn rm(project: &mut project::Project, args: &[String]) -> bool {
+fn rm(project: &mut Project, args: &[String]) -> bool {
     if args.len() < 2 {
         panic!("You must provide a hash to remove");
     }
@@ -127,33 +155,9 @@ fn rm(project: &mut project::Project, args: &[String]) -> bool {
 }
 
 /**
- * Syncs all changes
- */
-fn sync(project: &mut project::Project) -> bool {
-    let project_dir = &project.get_path();
-
-    for change in project.changes.iter_mut() {
-        let target = format!("{}/{}", project_dir, &change.file);
-        let hashed = hash_file(&change.source_file);
-
-        // Check if file changed
-        if hashed != change.hash {
-            fs::copy(&change.source_file, &target)
-                .expect("Could not copy source file");
-
-            println!("Syncing change {} -> new hash {}", &change.hash, hashed);
-
-            change.hash = hashed;
-        }
-    }
-
-    true
-}
-
-/**
  * Hash a file content 
  */
-fn hash_file(path: &str) -> String {
+pub fn hash_file(path: &str) -> String {
     // Open file
     let mut file = match File::open(&path) {
         Err(_) => panic!("couldn't read {}", path),

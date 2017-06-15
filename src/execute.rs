@@ -1,4 +1,5 @@
-use project;
+use project::{Timing,Project};
+use change::Change;
 use std::fs::{self,File};
 use yaml_rust::YamlLoader;
 use std::io::Read;
@@ -6,16 +7,16 @@ use std::io::Read;
 /**
  * Echoes out all changes to be made 
  */
-pub fn simulate(project: &project::Project) {
+pub fn simulate(project: &Project) {
     let line = format!("{dash:-<100}", dash="-");
-    let mut pres: Vec<&project::Change> = Vec::new();
-    let mut posts: Vec<&project::Change> = Vec::new();
+    let mut pres: Vec<&Change> = Vec::new();
+    let mut posts: Vec<&Change> = Vec::new();
 
     // Gather timing lists
     for change in &project.changes {
         match change.timing {
-            project::Timing::Pre => pres.push(change),
-            project::Timing::Post => posts.push(change),
+            Timing::Pre => pres.push(change),
+            Timing::Post => posts.push(change),
         }
     }
 
