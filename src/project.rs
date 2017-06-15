@@ -157,6 +157,36 @@ impl Project{
             None => 9999,
         }
     }
+
+    /**
+     * Save a project and write it out
+     */
+    pub fn save(&self) {
+        let project_dir = self.get_path();
+
+        // Prepare project file path
+        let project_path = format!("{}/{}", project_dir, PROJECT_FILE);
+        let path = Path::new(&project_path);
+        let display = path.display();
+
+        // Open a file in write-only mode, returns `io::Result<File>`
+        let mut file = match File::create(&path) {
+            Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+            Ok(file) => file,
+        };
+
+        // Encode project as a json string
+        let content = match serde_json::to_string(&self) {
+            Ok(res) => res,
+            Err(_) => panic!("Could not serialize project file"),
+        };
+
+        // Write the string to the project file
+        match file.write_all(content.as_bytes()) {
+            Err(why) => panic!("Error: Couldn't write to {}: {}", display, why.description()),
+            Ok(_) => println!("Successfully created project file {}", display),
+        }
+    }
 }
 
 pub struct SearchResult {
@@ -194,7 +224,7 @@ pub fn create(args: &[String]) {
         changes: Vec::new()
     };
 
-    save(&project);
+    project.save();
 }
 
 /**
@@ -216,7 +246,7 @@ pub fn load(project: &str) -> Project {
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("Could not read project file");
 
-    // Parse YAML data
+    // Parse YAML ata
     let project: Project = match serde_json::from_str(&contents) {
         Ok(project) => project,
         Err(e) => panic!("Could not load project json file {:?}", e),
@@ -225,32 +255,3 @@ pub fn load(project: &str) -> Project {
     project
 }
 
-/**
- * Save a project and write it out
- */
-pub fn save(project: &Project) {
-    let project_dir = project.get_path();
-
-    // Prepare project file path
-    let project_path = format!("{}/{}", project_dir, PROJECT_FILE);
-    let path = Path::new(&project_path);
-    let display = path.display();
-
-    // Open a file in write-only mode, returns `io::Result<File>`
-    let mut file = match File::create(&path) {
-        Err(why) => panic!("couldn't create {}: {}", display, why.description()),
-        Ok(file) => file,
-    };
-
-    // Encode project as a json string
-    let content = match serde_json::to_string(&project) {
-        Ok(res) => res,
-        Err(_) => panic!("Could not serialize project file"),
-    };
-
-    // Write the string to the project file
-    match file.write_all(content.as_bytes()) {
-        Err(why) => panic!("Error: Couldn't write to {}: {}", display, why.description()),
-        Ok(_) => println!("Successfully created project file {}", display),
-    }
-}

@@ -36,7 +36,7 @@ fn do_work(directive: &str, mut args: Vec<String>) {
                 },
                 "data" => {
                     if change::perform(&mut project, &mut rest) {
-                        project::save(&project);
+                        project.save();
                     }
                 },
                 _ => assert!(rest.len() > 0, 

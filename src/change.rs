@@ -80,7 +80,7 @@ fn set(project: &mut project::Project, args: &[String]) -> bool {
  * List all changes in project 
  */
 fn ls(project: &mut project::Project) -> bool {
-    println!("\nCurrent changes in project:\n");
+    println!("> Current changes in project:\n");
     let line = format!("|-{dash:-<10}-|-{dash:-<100}-|-{dash:-<32}-|", dash="-");
     println!("{}", line);
     println!("| {timing:10} | {file:100} | {hash:32} |", timing="Timing", file="File", hash="Hash");
