@@ -34,7 +34,8 @@ fn execute(directive: &str, mut args: Vec<String>, matches:&getopts::Matches) {
             let qualifier = &args[0];
 
             match qualifier.as_ref() {
-                "add" => change::add(&mut project, &rest),
+                "pre" => change::add(&mut project, "pre", &rest),
+                "post" => change::add(&mut project, "post", &rest),
                 "rm" => change::rm(&mut project, &rest),
                 "ls" => project.ls(),
                 "clear" => project.clear(),

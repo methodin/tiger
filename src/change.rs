@@ -82,13 +82,12 @@ impl Change {
 /**
  * Create a new change
  */
-pub fn add(project: &mut Project, args: &[String]) {
-    if args.len() != 2 {
-        panic!("You must provide at least 2 arguments to add");
+pub fn add(project: &mut Project, timing: &str, args: &[String]) {
+    if args.len() != 1 {
+        panic!("You must provide a change type");
     }
 
-    let timing = args[0].to_owned();
-    let change_type = args[1].to_owned();
+    let change_type = args[0].to_owned();
 
     // Create hash and dir
     let mut rng = rand::thread_rng();
