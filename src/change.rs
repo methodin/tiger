@@ -1,9 +1,36 @@
 use project::{Project,Timing};
 use md5;
+use rand::{self,Rng};
 use std::fmt;
-use std::path::Path;
-use std::fs::{self,File};
+use std::fs::{self,File,DirBuilder};
 use std::io::prelude::*;
+use std::str::FromStr;
+
+#[derive(Clone, Serialize, Deserialize)]
+pub enum ChangeType {
+    Sql
+}
+impl Default for ChangeType {
+    fn default() -> ChangeType { ChangeType::Sql }
+}
+impl fmt::Display for ChangeType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let printable = match *self {
+            ChangeType::Sql => "sql"
+        };
+        write!(f, "{:10}", printable)
+    }
+}
+impl FromStr for ChangeType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<ChangeType, ()> {
+        match s {
+            "sql" => Ok(ChangeType::Sql),
+            _ => Err(()),
+        }
+    }
+}
 
 /**
  * The change struct
@@ -11,10 +38,9 @@ use std::io::prelude::*;
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct Change {
     pub timing: Timing,
-    pub file: String,
-    pub hash: String,
     #[serde(default)]
-    pub source_file: String
+    pub change_type: ChangeType,
+    pub hash: String,
 }
 
 /**
@@ -22,27 +48,21 @@ pub struct Change {
  */
 impl fmt::Display for Change {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "| {timing} | {file:100} | {hash:32} |",
+        write!(f, "| {timing:10} | {change_type:10} | {hash:32} |",
             timing = self.timing,
-            file = self.file,
+            change_type = self.change_type,
             hash = self.hash)
     }
 }
 
 impl Change {
-    // Remove the file from the filesystem
-    pub fn remove_file(self, project: &Project) {
+    /**
+     * Read file contents
+     */
+    pub fn read_file(&self, project: &Project, direction: &str) -> String {
         let project_dir = &project.get_path();
-        let target = format!("{}/{}", project_dir, &self.file);
-
-        fs::remove_file(target)
-            .expect("Could not remove file");
-    }
-
-    // Read file contents
-    pub fn read_file(&self, project: &Project) -> String {
-        let project_dir = &project.get_path();
-        let target = format!("{}/{}", project_dir, &self.file);
+        let target = format!("{}/{}/{}.sql",
+            project_dir, &self.hash, &direction);
 
         // Open file
         let mut file = match File::open(&target) {
@@ -58,116 +78,74 @@ impl Change {
     }
 }
 
-
 /**
- * Perform a specific change request
+ * Create a new change
  */
-pub fn perform(project: &mut Project, args: &mut Vec<String>) -> bool {
-    match args[0].as_ref() {
-        "set" => set(project, &args),
-        "ls" => project.ls(),
-        "clear" => project.clear(),
-        "rm" => rm(project, &args),
-        "sync" => project.sync(),
-        _ => panic!("Not a valid data action"),
-    }
-}
-
-/**
- * Create a new change in the current project
- */
-fn set(project: &mut Project, args: &[String]) -> bool {
-    if args.len() < 3 {
-        panic!("You must provide at least 2 arguments to change");
+pub fn add(project: &mut Project, args: &[String]) {
+    if args.len() != 2 {
+        panic!("You must provide at least 2 arguments to add");
     }
 
-    let timing = args[1].to_owned();
-    let file = args[2].to_owned();
+    let timing = args[0].to_owned();
+    let change_type = args[1].to_owned();
 
-    // Copy file from source into project
-    let project_dir = project.get_path();
-    let path = Path::new(&file);
-    let file_name = match path.file_name() {
-        Some(name) => name.to_str(),
-        None => panic!("You must provide a valid file"),
+    // Create hash and dir
+    let mut rng = rand::thread_rng();
+    let rnd = format!("{}", rng.gen::<u32>());
+    let hash = format!("{:x}", md5::compute(rnd));
+   
+    // Create new change dir
+    let project_dir = &project.get_path();
+    let change_dir = format!("{}/{}", &project_dir, hash);
+    DirBuilder::new()
+        .create(&change_dir).unwrap();
+
+    println!("Creating new change {}", &hash);
+
+    // Create up file
+    File::create(format!("{}/{}", &change_dir, "up.sql"))
+        .expect("Could not create up file");
+
+    println!("Creating new up file {}/{}", &change_dir, "up.sql");
+
+    // Create down file
+    File::create(format!("{}/{}", &change_dir, "down.sql"))
+        .expect("Could not create down file");
+
+    println!("Creating new up file {}/{}", &change_dir, "down.sql");
+        
+    // Add change to change list
+    let change = Change {
+        timing: timing.parse::<Timing>()
+            .expect("Invalid timing value"),
+        hash: hash,
+        change_type: change_type.parse::<ChangeType>()
+            .expect("Invalid change type value"),
     };
-    let file_name = file_name.unwrap().to_string();
-
-    let target = format!("{}/{}", project_dir, &file_name);
-    // Check that file exists
-    assert_eq!(
-        path.exists(),
-        true,
-        "Input file {} does not exist",
-        &file
-    );
-    println!("Copying file {}", &file);
-    fs::copy(&file, &target)
-        .expect("Could not copy source file");
-
-    let index = project.find_change_by_file(&file_name);
-    let hashed = hash_file(&target);
-
-    // Update or add change
-    if index == 9999 {
-        // Add change to change list
-        let change = Change {
-            timing: timing.parse::<Timing>()
-                .expect("Invalid timing value"),
-            file: file_name.to_string(),
-            hash: hashed,
-            source_file: file.to_owned()
-        };
-        project.add_change(change);
-    } else {
-        let mut change = project.changes.get_mut(index).unwrap();
-        change.timing = timing.parse::<Timing>()
-            .expect("Invalid timing value");
-        change.file = file_name.to_string();
-        change.hash = hashed;
-        println!("Replacing change with new file");
-    }
-
-    true
+    project.add_change(change);
+    project.save();
 }
 
-
 /**
- * Create a new change in the current project
+ * Executes the rm command
  */
-fn rm(project: &mut Project, args: &[String]) -> bool {
-    if args.len() < 2 {
+pub fn rm(project: &mut Project, args: &[String]) {
+    if args.len() != 1 {
         panic!("You must provide a hash to remove");
     }
 
     // Lookup and find matching change
-    let hash = args[1].to_owned();
+    let hash = args[0].to_owned();
     let result = project.find_change_by_hash(&hash)
         .expect("No change with that hash found");
 
     // Remove file
-    result.change.remove_file(&project);
+    let project_dir = &project.get_path();
+    let change_dir = format!("{}/{}", &project_dir, result.change.hash);
+    fs::remove_dir_all(&change_dir)
+        .expect(format!("Could not remove dir {}", &change_dir).as_str());
 
-    println!("Removing change with hash {}", hash);
+    println!("Removing change with hash {}", result.change.hash);
     project.changes.remove(result.index);
-
-    true
+    project.save();
 }
-
-/**
- * Hash a file content 
- */
-pub fn hash_file(path: &str) -> String {
-    // Open file
-    let mut file = match File::open(&path) {
-        Err(_) => panic!("couldn't read {}", path),
-        Ok(file) => file,
-    };
-
-    // Read file contents
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("Could not read input file");
-    
-    return format!("{:x}", md5::compute(contents));
-}
-

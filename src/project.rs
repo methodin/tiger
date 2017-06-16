@@ -1,4 +1,4 @@
-use change::{self,Change};
+use change::Change;
 use std::env;
 use std::fmt;
 use std::fs::{self, DirBuilder};
@@ -15,6 +15,7 @@ pub enum Timing {
     Pre,
     Post
 }
+
 /**
  * Implement Display for Timing enum
  */
@@ -97,17 +98,6 @@ impl Project{
     }
 
     /**
-     * Find a change by file
-     */
-    pub fn find_change_by_file(&self, file_name: &str) -> usize {
-        let mut iter = self.changes.iter();
-        match iter.position(|&ref x| x.file == file_name) {
-            Some(index) => index,
-            None => 9999,
-        }
-    }
-
-    /**
      * Save a project and write it out
      */
     pub fn save(&self) {
@@ -171,53 +161,35 @@ impl Project{
     /**
      * Clear all changes in project 
      */
-    pub fn clear(&mut self) -> bool {
-        //TODO iterate and delete all files
+    pub fn clear(&mut self) {
         println!("Clearing all changes from project");
-        self.changes.clear();
 
-        true
+        let project_dir = &self.get_path();
+
+        for change in &self.changes {
+            let change_dir = format!("{}/{}", &project_dir, change.hash);
+            fs::remove_dir_all(&change_dir)
+                .expect(format!("Could not remove dir {}", &change_dir).as_str());
+            println!("Removed hash {}", change.hash);
+        }
+
+        self.changes.clear();
+        self.save();
     }
 
     /**
      * List all changes in project 
      */
-    pub fn ls(&mut self) -> bool {
+    pub fn ls(&mut self) {
         println!("> Current changes in project:\n");
-        let line = format!("|-{dash:-<10}-|-{dash:-<100}-|-{dash:-<32}-|", dash="-");
+        let line = format!("|-{dash:-<10}-|-{dash:-<10}-|-{dash:-<32}-|", dash="-");
         println!("{}", line);
-        println!("| {timing:10} | {file:100} | {hash:32} |", timing="Timing", file="File", hash="Hash");
+        println!("| {timing:10} | {change_type:10} | {hash:32} |", timing="Timing", change_type="Type", hash="Hash");
         println!("{}", line);
         for change in &self.changes {
             println!("{}", change);
         }
         println!("{}\n", line);
-
-        false
-    }
-
-    /**
-     * Syncs all changes
-     */
-    pub fn sync(&mut self) -> bool {
-        let project_dir = &self.get_path();
-
-        for change in self.changes.iter_mut() {
-            let target = format!("{}/{}", project_dir, &change.file);
-            let hashed = change::hash_file(&change.source_file);
-
-            // Check if file changed
-            if hashed != change.hash {
-                fs::copy(&change.source_file, &target)
-                    .expect("Could not copy source file");
-
-                println!("Syncing change {} -> new hash {}", &change.hash, hashed);
-
-                change.hash = hashed;
-            }
-        }
-
-        true
     }
 }
 

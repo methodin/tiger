@@ -1,13 +1,20 @@
 use project::{Timing,Project};
 use change::Change;
-use std::fs::{self,File};
-use yaml_rust::YamlLoader;
-use std::io::Read;
 
 /**
  * Echoes out all changes to be made 
  */
-pub fn simulate(project: &Project) {
+pub fn simulate(project: &Project, args: &[String]) {
+    if args.len() != 1 {
+        panic!("You must provide an up or down parameter");
+    }
+
+    let direction = match args[0].as_ref() {
+        "up" => "up",
+        "down" => "down",
+        dir => panic!("Invalid direction {}", dir),
+    };
+
     let line = format!("{dash:-<100}", dash="-");
     let mut pres: Vec<&Change> = Vec::new();
     let mut posts: Vec<&Change> = Vec::new();
@@ -30,18 +37,20 @@ pub fn simulate(project: &Project) {
         println!("\n> PRE SCRIPTS\n{}", line);
 
         for ref change in pres.iter_mut() {
-            let content = change.read_file(&project);
-            println!("{}\n{}", content, line); 
+            let content = change.read_file(&project, direction);
+            println!("{}", content); 
         }
+        println!("{}", line);
     } 
 
     if posts.len() > 0 {
         println!("\n> POST SCRIPTS\n{}", line);
 
         for ref change in posts.iter_mut() {
-            let content = change.read_file(&project);
-            println!("{}\n{}", content, line); 
+            let content = change.read_file(&project, direction);
+            println!("{}", content); 
         }
+        println!("{}", line);
     } 
 
     println!("> Deployment complete\n");
@@ -54,6 +63,7 @@ pub fn run(args: &[String]) {
     //TODO check args
     //
     // Open file
+    /*
     let mut file = match File::open(&args[0]) {
         Err(_) => panic!("couldn't read {}", args[0]),
         Ok(file) => file,
@@ -68,4 +78,5 @@ pub fn run(args: &[String]) {
     let doc = &docs[0];
 
     println!("{:?}", doc);
+    */
 }

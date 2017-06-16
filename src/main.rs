@@ -3,6 +3,7 @@ extern crate getopts;
 extern crate yaml_rust;
 extern crate serde;
 extern crate serde_json;
+extern crate rand;
 #[macro_use]
 extern crate serde_derive;
 
@@ -15,10 +16,9 @@ use std::env;
 use project::Project;
 
 /**
- * Uses:
- *
+ * Execute a command against a project or change
  */
-fn do_work(directive: &str, mut args: Vec<String>) {
+fn execute(directive: &str, mut args: Vec<String>) {
     match directive {
         "init" => Project::create(&args[0]),
         "run" => execute::run(args.as_slice()),
@@ -27,21 +27,16 @@ fn do_work(directive: &str, mut args: Vec<String>) {
 
             assert!(args.len() > 0, "You must provide at least one parameter");
 
-            let mut rest: Vec<_> = args.drain(1..).collect();
+            let rest: Vec<_> = args.drain(1..).collect();
             let qualifier = &args[0];
 
             match qualifier.as_ref() {
-                "simulate" => {
-                    execute::simulate(&project);
-                    return;
-                },
-                "data" => {
-                    if change::perform(&mut project, &mut rest) {
-                        project.save();
-                    }
-                },
-                _ => assert!(rest.len() > 0, 
-                    format!("{} is unknown command", qualifier)),
+                "add" => change::add(&mut project, &rest),
+                "rm" => change::rm(&mut project, &rest),
+                "ls" => project.ls(),
+                "clear" => project.clear(),
+                "simulate" => execute::simulate(&project, &rest),
+                _ => panic!("{} is an unknown command", qualifier),
             }
         }
     }
@@ -89,7 +84,7 @@ fn main() {
 
     // let output = matches.opt_str("o");
     if let Some((directive, rest)) = matches.free.split_first() {
-        do_work(&directive, rest.to_vec());
+        execute(&directive, rest.to_vec());
         return;
     }
 
