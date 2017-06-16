@@ -3,9 +3,11 @@ extern crate getopts;
 extern crate yaml_rust;
 extern crate serde;
 extern crate serde_json;
+extern crate serde_yaml;
 extern crate rand;
 #[macro_use]
 extern crate serde_derive;
+extern crate mysql;
 
 pub mod project;
 mod execute;
@@ -18,10 +20,10 @@ use project::Project;
 /**
  * Execute a command against a project or change
  */
-fn execute(directive: &str, mut args: Vec<String>) {
+fn execute(directive: &str, mut args: Vec<String>, matches:&getopts::Matches) {
     match directive {
         "init" => Project::create(&args[0]),
-        "run" => execute::run(args.as_slice()),
+        "run" => execute::run(args.as_slice(), &matches),
         _ => {
             let mut project = project::load(&directive);
 
@@ -35,6 +37,7 @@ fn execute(directive: &str, mut args: Vec<String>) {
                 "rm" => change::rm(&mut project, &rest),
                 "ls" => project.ls(),
                 "clear" => project.clear(),
+                "edit" => change::edit(&mut project, &rest),
                 "simulate" => execute::simulate(&project, &rest),
                 _ => panic!("{} is an unknown command", qualifier),
             }
@@ -84,7 +87,7 @@ fn main() {
 
     // let output = matches.opt_str("o");
     if let Some((directive, rest)) = matches.free.split_first() {
-        execute(&directive, rest.to_vec());
+        execute(&directive, rest.to_vec(), &matches);
         return;
     }
 

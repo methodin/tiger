@@ -5,6 +5,7 @@ use std::fmt;
 use std::fs::{self,File,DirBuilder};
 use std::io::prelude::*;
 use std::str::FromStr;
+use std::process::Command;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum ChangeType {
@@ -148,4 +149,31 @@ pub fn rm(project: &mut Project, args: &[String]) {
     println!("Removing change with hash {}", result.change.hash);
     project.changes.remove(result.index);
     project.save();
+}
+
+/**
+ * Executes the edit command
+ */
+pub fn edit(project: &mut Project, args: &[String]) {
+    if args.len() != 1 {
+        panic!("You must provide a hash to edit");
+    }
+
+    // Lookup and find matching change
+    let hash = args[0].to_owned();
+    let result = project.find_change_by_hash(&hash)
+        .expect("No change with that hash found");
+
+    // Remove file
+    let project_dir = &project.get_path();
+    let change_dir = format!("{}/{}", &project_dir, result.change.hash);
+
+    let up_file = format!("{}/up.sql", change_dir);
+    let down_file = format!("{}/down.sql", change_dir);
+
+    Command::new("vim")
+        .arg(&up_file)
+        .arg(&down_file)
+        .status()
+        .expect("Failed to execute process");
 }

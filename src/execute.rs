@@ -1,5 +1,19 @@
-use project::{Timing,Project};
-use change::Change;
+use project::{self,Timing,Project};
+use change::{Change,ChangeType};
+use std::fs::File;
+use std::io::Read;
+use serde_yaml;
+use getopts;
+use mysql as my;
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+struct SqlConfig {
+    host: String
+}
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+struct Config {
+    sql: SqlConfig,
+}
 
 /**
  * Echoes out all changes to be made 
@@ -12,7 +26,7 @@ pub fn simulate(project: &Project, args: &[String]) {
     let direction = match args[0].as_ref() {
         "up" => "up",
         "down" => "down",
-        dir => panic!("Invalid direction {}", dir),
+        dir => panic!("invalid direction {}", dir),
     };
 
     let line = format!("{dash:-<100}", dash="-");
@@ -33,6 +47,7 @@ pub fn simulate(project: &Project, args: &[String]) {
         "> Post-deploy changes:",
         posts.len());
 
+    // Echo pre scripts
     if pres.len() > 0 {
         println!("\n> PRE SCRIPTS\n{}", line);
 
@@ -43,6 +58,7 @@ pub fn simulate(project: &Project, args: &[String]) {
         println!("{}", line);
     } 
 
+    // Echo post scripts
     if posts.len() > 0 {
         println!("\n> POST SCRIPTS\n{}", line);
 
@@ -59,13 +75,32 @@ pub fn simulate(project: &Project, args: &[String]) {
 /**
  * Execute one or more projects
  */
-pub fn run(args: &[String]) {
-    //TODO check args
-    //
+pub fn run(args: &[String], matches:&getopts::Matches) {
+    if args.len() < 3 {
+        panic!("You must provide a direction, a timing and at least one project to run");
+    }
+
+    let direction = match args[0].as_ref() {
+        "up" => "up",
+        "down" => "down",
+        dir => panic!("invalid direction {}", dir),
+    };
+
+    // Check if config file not passed
+    if !matches.opt_present("c") {
+        panic!("When using run you must provide a configuration file via the -c flag");
+    }
+
+    let projects: &[String] = &args[2..];
+    let timing: Timing = args[1].parse::<Timing>()
+            .expect("Invalid timing value");
+    
+    // Get config file path
+    let config = matches.opt_str("c").unwrap();
+    
     // Open file
-    /*
-    let mut file = match File::open(&args[0]) {
-        Err(_) => panic!("couldn't read {}", args[0]),
+    let mut file = match File::open(&config) {
+        Err(_) => panic!("couldn't read {}", config),
         Ok(file) => file,
     };
 
@@ -73,10 +108,38 @@ pub fn run(args: &[String]) {
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("Could not read config file");
+    let config: Config = serde_yaml::from_str(&contents).unwrap();
 
-    let docs = YamlLoader::load_from_str(&contents).unwrap();
-    let doc = &docs[0];
+    for project_name in projects {
+        let project = project::load(&project_name);
 
-    println!("{:?}", doc);
-    */
+        let mut changes: Vec<&Change> = Vec::new();
+
+        // Gather timing lists
+        for change in &project.changes {
+            if change.timing == timing {
+                changes.push(change);
+            }
+        }
+
+        // Execute pre deploy scripts
+        if changes.len() == 0 {
+            println!("No changes to run");
+            return;
+        }
+
+        for ref change in changes.iter_mut() {
+            let content = change.read_file(&project, direction);
+            match change.change_type {
+                ChangeType::Sql => {
+                    println!("Executing the following code:\n{}", content); 
+                    let pool = my::Pool::new(&config.sql.host).unwrap();
+                    pool.prep_exec(&content, ()).unwrap();
+                    println!("Success");
+                },
+            }
+        }
+
+        println!("Migration complete");
+    }
 }

@@ -10,7 +10,7 @@ use std::path::Path;
 use std::str::FromStr;
 use serde_json;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Serialize, Deserialize)]
 pub enum Timing {
     Pre,
     Post
@@ -211,7 +211,7 @@ pub fn load(project: &str) -> Project {
 
     // Open file
     let mut file = match File::open(&yaml_path) {
-        Err(why) => panic!("couldn't create {}: {}", yaml_path, why.description()),
+        Err(why) => panic!("Couldn't open file {}: {}", yaml_path, why.description()),
         Ok(file) => file,
     };
 
