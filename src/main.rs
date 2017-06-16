@@ -23,7 +23,8 @@ use project::Project;
 fn execute(directive: &str, mut args: Vec<String>, matches:&getopts::Matches) {
     match directive {
         "init" => Project::create(&args[0]),
-        "run" => execute::run(args.as_slice(), &matches),
+        "up" => execute::run("up", args.as_slice(), &matches),
+        "down" => execute::run("down", args.as_slice(), &matches),
         _ => {
             let mut project = project::load(&directive);
 
@@ -67,6 +68,7 @@ fn main() {
     let mut opts = Options::new();
     opts.optopt("c", "", "set the config file", "CONFIG");
     opts.optflag("h", "help", "print this help menu");
+    opts.optflag("r", "run", "execute the the up/down command");
 
     // Match available options with args passed in
     let matches = match opts.parse(&args[1..]) {
