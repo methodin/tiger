@@ -8,19 +8,25 @@ extern crate rand;
 #[macro_use]
 extern crate serde_derive;
 extern crate mysql;
+extern crate bincode;
+extern crate rusoto_core;
+extern crate rusoto_s3;
+extern crate rusoto_credential;
 
 pub mod project;
 mod execute;
 pub mod change;
+mod package;
+pub mod config;
 
-use getopts::Options;
+use getopts::{Options,Matches};
 use std::env; 
 use project::Project;
 
 /**
  * Execute a command against a project or change
  */
-fn execute(directive: &str, mut args: Vec<String>, matches:&getopts::Matches) {
+fn execute(directive: &str, mut args: Vec<String>, matches:&Matches) {
     match directive {
         "init" => Project::create(&args[0]),
         "up" => execute::run("up", args.as_slice(), &matches),
@@ -41,6 +47,7 @@ fn execute(directive: &str, mut args: Vec<String>, matches:&getopts::Matches) {
                 "clear" => project.clear(),
                 "edit" => change::edit(&mut project, &rest),
                 "simulate" => execute::simulate(&project, &rest),
+                "package" => package::run(project, &matches),
                 _ => panic!("{} is an unknown command", qualifier),
             }
         }

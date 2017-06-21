@@ -5,15 +5,7 @@ use std::io::Read;
 use serde_yaml;
 use getopts;
 use mysql as my;
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct SqlConfig {
-    host: String
-}
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct Config {
-    sql: SqlConfig,
-}
+use config;
 
 /**
  * Echoes out all changes to be made 
@@ -80,30 +72,12 @@ pub fn run(direction: &str, args: &[String], matches:&getopts::Matches) {
         panic!("You must provide a timing and at least one project to run");
     }
 
-    // Check if config file not passed
-    if !matches.opt_present("c") {
-        panic!("When using run you must provide a configuration file via the -c flag");
-    }
+    let config = config::load_config("run", &matches);
 
     let projects: &[String] = &args[1..];
     let timing: Timing = args[0].parse::<Timing>()
             .expect("Invalid timing value");
     
-    // Get config file path
-    let config = matches.opt_str("c").unwrap();
-    
-    // Open file
-    let mut file = match File::open(&config) {
-        Err(_) => panic!("couldn't read {}", config),
-        Ok(file) => file,
-    };
-
-    // Read file contents
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .expect("Could not read config file");
-    let config: Config = serde_yaml::from_str(&contents).unwrap();
-
     let commit = matches.opt_present("r");
 
     if !commit {

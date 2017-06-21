@@ -39,9 +39,12 @@ impl FromStr for ChangeType {
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct Change {
     pub timing: Timing,
-    #[serde(default)]
     pub change_type: ChangeType,
     pub hash: String,
+    #[serde(default)]
+    pub up_content: String,
+    #[serde(default)]
+    pub down_content: String,
 }
 
 /**
@@ -121,6 +124,7 @@ pub fn add(project: &mut Project, timing: &str, args: &[String]) {
         hash: hash,
         change_type: change_type.parse::<ChangeType>()
             .expect("Invalid change type value"),
+        ..Default::default()
     };
     project.add_change(change);
     project.save();
