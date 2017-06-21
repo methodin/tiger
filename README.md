@@ -6,7 +6,7 @@ Data deployment management
 ## Initialize a project
 To create a new project in the current directory for a Jira ticket TEST-442 you would run the following:
 ```sh
-> tiger init TEST-442
+tiger init TEST-442
 ```
 
 ## List changes
@@ -44,6 +44,15 @@ tiger MAG-655 simulate down
 ```
 
 # Running changes 
+
+## Packaging a project
+When all your work is done for a project and you are ready to ship, you must package it up into a binary that will upload to s3. These binaries are used by the subsequent run commands. Once you package a project it cannot be uploaded using the same name - it's recommended to use a version # for subsequent versions:
+*Note % in the name is replaced by the project name*
+```sh
+tiger -c ~/tiger.yaml TEST-442 package %
+tiger -c ~/tiger.yaml TEST-442 package %-1
+tiger -c ~/tiger.yaml TEST-442 package %-2
+```
 
 ## Non-commit run-through
 You can check all changes that are to be staged by simulating an up or down in a pre or post world and provide one or more projects to load:
