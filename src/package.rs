@@ -5,8 +5,9 @@ use getopts::Matches;
 use project::Project;
 use std::io::prelude::*;
 use std::fs::File;
-use rusoto_s3::{S3,S3Client,PutObjectRequest};
-use rusoto_core::{DefaultCredentialsProvider,Region,default_tls_client};
+use std::str::FromStr;
+use rusoto_s3::{S3,S3Client,PutObjectRequest,GetObjectRequest};
+use rusoto_core::{Region,default_tls_client};
 use rusoto_credential::StaticProvider;
 
 /**
@@ -14,8 +15,16 @@ use rusoto_credential::StaticProvider;
  * project into a binary representation that can be uplaoded
  * elasewhere
  */
-pub fn run(project: Project, matches:&Matches) {
+pub fn run(project: Project, args: &[String], matches:&Matches) {
+    if args.len() != 1 {
+        panic!("You must provide a package file name");
+    }
+
+    let file_name = args[0].replace("%", project.name.as_str());
+    let file_name = format!("{}.bin", file_name);
     let config = config::load_config("package", &matches);
+
+    println!("Packaging project file {}", &file_name);
 
     // Create packaged version of project
     let mut packaged_project = Project {
@@ -41,32 +50,33 @@ pub fn run(project: Project, matches:&Matches) {
     // Binary encode packaged project
     let encoded: Vec<u8> = serialize(&packaged_project, Infinite).unwrap();
 
-    // Write to output file
-    let project_dir = &project.get_path();
-    let file_name = format!("{}.bin", &project.name);
-    let binary_path = format!("{}/{}", &project_dir, &file_name);
+    println!("Packaging complete... uploading to s3");
 
-    println!("Packaging project file to {}", &binary_path);
-
-    let mut buffer = File::create(&binary_path)
-        .expect("Unable to package project file");
-    
-    buffer.write(encoded.as_slice())
-        .expect("Unable to write data to bin file");
-
-    println!("Packaging complete");
-
-    // Upload package to s3
+    // Setup s3 objects
     let provider = StaticProvider::new(config.s3.key, config.s3.secret, None, None);
-    let region = Region::UsWest1;
-    let bucket = "tiger-1234";
+    let region = Region::from_str(config.s3.region.as_str()).unwrap();
+    let bucket = config.s3.bucket;
+    let s3 = S3Client::new(default_tls_client().unwrap(), provider, region);
 
-    let mut s3 = S3Client::new(default_tls_client().unwrap(), provider, region);
+    // Setup get object request
+    let mut req : GetObjectRequest = Default::default();
+    req.key = file_name.clone();
+    req.bucket = bucket.to_string();
+    
+    // Check if object already exists
+    match s3.get_object(&req) {
+        Err(_) => {},
+        _ => panic!("The package name you have specified already exists. Choose another e.g. %-1")
+    };
+
+
+    // Setup put object request
     let mut req : PutObjectRequest = Default::default();
     req.body = Some(encoded.clone());
     req.key = file_name.clone();
     req.bucket = bucket.to_string();
 
+    // Upload package to s3
     match s3.put_object(&req) {
         Err(err) => println!("Failed to put object {} message: {}", &file_name, err),
         _ => println!("Successfully uploaded package to s3")

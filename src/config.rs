@@ -11,6 +11,8 @@ pub struct SqlConfig {
 pub struct S3Config {
     pub key: String,
     pub secret: String,
+    pub bucket: String,
+    pub region: String,
 }
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {

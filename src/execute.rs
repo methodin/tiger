@@ -1,8 +1,5 @@
 use project::{self,Timing,Project};
 use change::{Change,ChangeType};
-use std::fs::File;
-use std::io::Read;
-use serde_yaml;
 use getopts;
 use mysql as my;
 use config;
