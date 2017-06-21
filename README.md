@@ -48,7 +48,7 @@ tiger MAG-655 simulate down
 ## Packaging a project
 When all your work is done for a project and you are ready to ship, you must package it up into a binary that will upload to s3. These binaries are used by the subsequent run commands. Once you package a project it cannot be uploaded using the same name - it's recommended to use a version # for subsequent versions:
 
-*Note % in the name is replaced by the project name*
+*Note: % in the name is replaced by the project name*
 
 ```sh
 tiger -c ~/tiger.yaml TEST-442 package %
