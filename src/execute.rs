@@ -1,8 +1,9 @@
-use project::{self,Timing,Project};
+use project::{Timing,Project};
 use change::{Change,ChangeType};
-use getopts;
-use mysql as my;
 use config;
+use getopts::Matches;
+use mysql as my;
+use package;
 
 /**
  * Echoes out all changes to be made 
@@ -64,7 +65,7 @@ pub fn simulate(project: &Project, args: &[String]) {
 /**
  * Execute one or more projects
  */
-pub fn run(direction: &str, args: &[String], matches:&getopts::Matches) {
+pub fn run(direction: &str, args: &[String], matches:&Matches) {
     if args.len() < 2 {
         panic!("You must provide a timing and at least one project to run");
     }
@@ -84,37 +85,46 @@ pub fn run(direction: &str, args: &[String], matches:&getopts::Matches) {
     println!("Connecting to sql server");
     let pool = my::Pool::new(&config.sql.host).unwrap();
 
-    for project_name in projects {
-        let project = project::load(&project_name);
+    let mut changes: Vec<Change> = Vec::new();
 
-        let mut changes: Vec<&Change> = Vec::new();
+    println!("Downloading packages");
+
+    // Loop through projects, download and build change list
+    for project_name in projects {
+        let project = package::load(&project_name, &config);
 
         // Gather timing lists
         for change in &project.changes {
             if change.timing == timing {
-                changes.push(change);
+                changes.push(change.clone());
             }
         }
-
-        // Execute pre deploy scripts
-        if changes.len() == 0 {
-            println!("No changes to run");
-            return;
-        }
-
-        for ref change in changes.iter_mut() {
-            let content = change.read_file(&project, direction);
-            match change.change_type {
-                ChangeType::Sql => {
-                    println!("Executing the following SQL code:\n{}", content); 
-                    if commit {
-                        pool.prep_exec(&content, ()).unwrap();
-                        println!("Success");
-                    }
-                },
-            }
-        }
-
-        println!("Migration complete");
     }
+
+    // See if we have any changes to run
+    if changes.len() == 0 {
+        println!("No changes to run");
+        return;
+    }
+
+    // Execute compiled changes
+    for change in changes.iter_mut() {
+        let content = if direction  == "up" {
+            &change.up_content
+        } else {
+            &change.down_content
+        };
+
+        match change.change_type {
+            ChangeType::Sql => {
+                println!("Executing the following SQL code:\n{}", &content); 
+                if commit {
+                    pool.prep_exec(&content, ()).unwrap();
+                    println!("Success");
+                }
+            },
+        }
+    }
+
+    println!("Migration complete");
 }

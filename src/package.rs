@@ -1,10 +1,8 @@
 use bincode::{serialize, deserialize, Infinite};
 use change::Change;
-use config;
+use config::{self,Config};
 use getopts::Matches;
 use project::Project;
-use std::io::prelude::*;
-use std::fs::File;
 use std::str::FromStr;
 use rusoto_s3::{S3,S3Client,PutObjectRequest,GetObjectRequest};
 use rusoto_core::{Region,default_tls_client};
@@ -69,7 +67,6 @@ pub fn run(project: Project, args: &[String], matches:&Matches) {
         _ => panic!("The package name you have specified already exists. Choose another e.g. %-1")
     };
 
-
     // Setup put object request
     let mut req : PutObjectRequest = Default::default();
     req.body = Some(encoded.clone());
@@ -83,18 +80,28 @@ pub fn run(project: Project, args: &[String], matches:&Matches) {
     };
 }
 
-pub fn read(path: &String) -> Project {
-    // Open file
-    let mut file = match File::open(&path) {
-        Err(_) => panic!("couldn't read package binary {}", path),
-        Ok(file) => file,
+/**
+ * Downloads and extracts a package from s3
+ */
+pub fn load(file_name: &String, config: &Config) -> Project {
+    // Setup s3 objects
+    let provider = StaticProvider::new(config.s3.key.clone(), config.s3.secret.clone(), None, None);
+    let region = Region::from_str(config.s3.region.as_str()).unwrap();
+    let bucket = config.s3.bucket.clone();
+    let s3 = S3Client::new(default_tls_client().unwrap(), provider, region);
+
+    // Setup get object request
+    let mut req : GetObjectRequest = Default::default();
+    req.key = format!("{}.bin", file_name.clone());
+    req.bucket = bucket.to_string();
+    
+    // Check if object already exists
+    let response = match s3.get_object(&req) {
+        Err(_) => panic!("Package not found or unable to connect to s3"),
+        obj => obj
     };
 
-    let mut buffer = Vec::new();
-    // read the whole file
-    file.read_to_end(&mut buffer).expect("Error");
-
     // Read file contents
-    let project: Project = deserialize(&buffer[..]).unwrap();
+    let project: Project = deserialize(&response.unwrap().body.unwrap()).unwrap();
     project
 }
