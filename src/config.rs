@@ -9,8 +9,6 @@ pub struct SqlConfig {
 }
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct S3Config {
-    pub key: String,
-    pub secret: String,
     pub bucket: String,
     pub region: String,
 }
@@ -19,7 +17,6 @@ pub struct Config {
     pub sql: SqlConfig,
     pub s3: S3Config,
 }
-
 
 pub fn load_config(command: &str, matches:&Matches) -> Config {
     // Check if config file not passed

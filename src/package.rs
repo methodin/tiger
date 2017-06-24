@@ -6,7 +6,7 @@ use project::Project;
 use std::str::FromStr;
 use rusoto_s3::{S3,S3Client,PutObjectRequest,GetObjectRequest};
 use rusoto_core::{Region,default_tls_client};
-use rusoto_credential::StaticProvider;
+use rusoto_credential::ChainProvider;
 
 /**
  * Executes the package command, effectively packaging the given
@@ -51,7 +51,7 @@ pub fn run(project: Project, args: &[String], matches:&Matches) {
     println!("Packaging complete... uploading to s3");
 
     // Setup s3 objects
-    let provider = StaticProvider::new(config.s3.key, config.s3.secret, None, None);
+    let provider = ChainProvider::new();
     let region = Region::from_str(config.s3.region.as_str()).unwrap();
     let bucket = config.s3.bucket;
     let s3 = S3Client::new(default_tls_client().unwrap(), provider, region);
@@ -85,7 +85,7 @@ pub fn run(project: Project, args: &[String], matches:&Matches) {
  */
 pub fn load(file_name: &String, config: &Config) -> Project {
     // Setup s3 objects
-    let provider = StaticProvider::new(config.s3.key.clone(), config.s3.secret.clone(), None, None);
+    let provider = ChainProvider::new();
     let region = Region::from_str(config.s3.region.as_str()).unwrap();
     let bucket = config.s3.bucket.clone();
     let s3 = S3Client::new(default_tls_client().unwrap(), provider, region);
