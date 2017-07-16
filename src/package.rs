@@ -97,7 +97,7 @@ pub fn load(file_name: &String, config: &Config) -> Project {
     
     // Check if object already exists
     let response = match s3.get_object(&req) {
-        Err(_) => panic!("Package not found or unable to connect to s3"),
+        Err(e) => panic!(format!("Package not found or unable to connect to s3: {}", e)),
         obj => obj
     };
 
