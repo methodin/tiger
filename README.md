@@ -1,7 +1,44 @@
 # tiger
 Data deployment management
 
-# Commands during development
+# Dependencies
+Tiger has a hard dependency on AWS S3 for storage of packaged binaries and MySQL for actual SQL migrations. That may change in the future and is certainly a blocker for anyone not using either of these two tools. If you have another toolset you would like to see supported ass an Issue and I will review.
+
+# Using tiger
+It's recommended to use tiger with Docker to avoid having to worry about specific dependencies. You must first build the docker container from within the tiger git checkout directory:
+
+```sh
+docker build -t tiger .
+```
+
+# For developers
+For developers using tiger in their projects it's recommended to create an alias in your .bash_aliases file:
+
+```
+tiger() {
+    local yaml="/home/ec2-user/tiger.yaml";
+    local aws="/home/.aws";
+    local mysql="127.0.0.1";
+    docker run --rm -it -v ${PWD}:/tiger -v $yaml:/tiger/tiger.yaml -v $aws:/home/rust/.aws --net host --add-host mysql:$mysql  tiger -c /tiger/tiger.yaml $@;
+}
+```
+This alias will map any current directory to the working directory in the tiger docker instance and avoid having to install rust/cargo etc...
+
+# For production
+In production you would want a utility like Jenkins to simply execute the docker run for whatever commands you are executing.
+
+An example of the straight docker run is as follows:
+
+```sh
+docker run --rm -it \
+  -v ~/tiger.yaml:/tiger/tiger.yaml \
+  -v ~/.aws:/home/rust/.aws \
+  --net host \
+  --add-host mysql:127.0.0.1 \
+  tiger -c /tiger/tiger.yaml up pre TEST-442
+```
+
+You can see it generally reflects the dev alias above except you'd be hardcoding the value depending on your build tool.
 
 ## Initialize a project
 To create a new project in the current directory for a Jira ticket TEST-442 you would run the following:
