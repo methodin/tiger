@@ -28,6 +28,7 @@ use project::Project;
  */
 fn execute(directive: &str, mut args: Vec<String>, matches:&Matches) {
     match directive {
+        "ls" => project::ls(),
         "init" => Project::create(&args[0]),
         "up" => execute::run("up", args.as_slice(), &matches),
         "down" => execute::run("down", args.as_slice(), &matches),

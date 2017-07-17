@@ -58,6 +58,15 @@ tiger init TEST-442
 > Successfully created project file /home/ec2-user/Work/projects/test/tiger/TEST-442/project.json
 ```
 
+## List projects
+To list all proejcts in the current directory you can execute a generic ls:
+
+```sh
+tiger ls
+
+> TEST-442
+```
+
 ## List changes
 Once a project has been created there are a series of commands under that project that you can run. A very useful one is ls that lists all changes:
 ```sh

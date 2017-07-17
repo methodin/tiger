@@ -170,7 +170,7 @@ impl Project{
      */
     pub fn clear(&mut self) {
         println!("Clearing all changes from project");
-
+      
         let project_dir = &self.get_path();
 
         for change in &self.changes {
@@ -235,3 +235,14 @@ pub fn load(project: &str) -> Project {
     project
 }
 
+/**
+ * List all projects in current directory
+ */
+pub fn ls() {
+	let dir = env::current_dir().unwrap();
+    let paths = fs::read_dir(format!("{}/tiger", dir.display())).unwrap();
+
+    for path in paths {
+        println!("{}", path.unwrap().file_name().into_string().unwrap())
+    }
+}
