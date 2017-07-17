@@ -102,8 +102,15 @@ tiger TEST-442 post sql
 
 ## List scripts
 You can use the files command to list the up/down files for a changset. This output is on one line for ease of pipping to an editor of your choice
+
+```sh
 tiger TEST-442 files f9a1
+
+> tiger/TEST-442/f9a107647301283c0d4123d886d9c45f/up.sql tiger/TEST-442/f9a107647301283c0d4123d886d9c45f/down.sql
+
 tiger TEST-442 files f9a107647301283c0d4123d886d9c45f
+
+> tiger/TEST-442/f9a107647301283c0d4123d886d9c45f/up.sql tiger/TEST-442/f9a107647301283c0d4123d886d9c45f/down.sql
 ```
 
 ## Remove changes
