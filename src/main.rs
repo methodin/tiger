@@ -45,7 +45,7 @@ fn execute(directive: &str, mut args: Vec<String>, matches:&Matches) {
                 "rm" => change::rm(&mut project, &rest),
                 "ls" => project.ls(),
                 "clear" => project.clear(),
-                "edit" => change::edit(&mut project, &rest),
+                "files" => change::files(&mut project, &rest),
                 "simulate" => execute::simulate(&project, &rest),
                 "package" => package::run(project, &rest, &matches),
                 _ => panic!("{} is an unknown command", qualifier),

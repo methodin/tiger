@@ -74,6 +74,13 @@ impl Project{
     }
 
     /**
+     * Return relative path to project
+     */
+    pub fn get_relative_path(&self) -> String {
+        return format!("tiger/{}", &self.name);
+    }
+
+    /**
      * Find a change by hash
      */
     pub fn find_change_by_hash(&self, hash: &str) -> Option<SearchResult> {
@@ -181,7 +188,7 @@ impl Project{
      * List all changes in project 
      */
     pub fn ls(&mut self) {
-        println!("> Current changes in project:\n");
+        println!("Current changes in project:\n");
         let line = format!("|-{dash:-<10}-|-{dash:-<10}-|-{dash:-<32}-|", dash="-");
         println!("{}", line);
         println!("| {timing:10} | {change_type:10} | {hash:32} |", timing="Timing", change_type="Type", hash="Hash");

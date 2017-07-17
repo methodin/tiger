@@ -12,7 +12,7 @@ docker build -t tiger .
 ```
 
 # For developers
-For developers using tiger in their projects it's recommended to create an alias in your .bash_aliases file:
+For developers using tiger in their projects it's recommended to create the following aliases in your .bash_aliases file:
 
 ```
 tiger() {
@@ -21,8 +21,17 @@ tiger() {
     local mysql="127.0.0.1";
     docker run --rm -it -v ${PWD}:/tiger -v $yaml:/tiger/tiger.yaml -v $aws:/home/rust/.aws --net host --add-host mysql:$mysql  tiger -c /tiger/tiger.yaml $@;
 }
+tiger-edit() {
+    vim -p `tiger $1 files $2`
+}
 ```
-This alias will map any current directory to the working directory in the tiger docker instance and avoid having to install rust/cargo etc...
+The first alias will map any current directory to the working directory in the tiger docker instance and avoid having to install rust/cargo etc... The second alias is a convenience for editing the scripts for a particular project and changeset. It's use is:
+
+```
+tiger-edit TEST-442 f9a
+```
+
+Which will open both up/down files in a vim editor.
 
 # For production
 In production you would want a utility like Jenkins to simply execute the docker run for whatever commands you are executing.
@@ -82,11 +91,10 @@ tiger TEST-442 post sql
 > Successfully created project file /home/ec2-user/Work/projects/test/tiger/TEST-442/project.json
 ```
 
-## Edit scripts
-There is a shortcut command to edit both up/down files for a changeset. The hash provided can be the entire hash or any amount of characters at the beginning 
-```sh
-tiger TEST-442 edit f9a1
-tiger TEST-442 edit f9a107647301283c0d4123d886d9c45f
+## List scripts
+You can use the files command to list the up/down files for a changset. This output is on one line for ease of pipping to an editor of your choice
+tiger TEST-442 files f9a1
+tiger TEST-442 files f9a107647301283c0d4123d886d9c45f
 ```
 
 ## Remove changes

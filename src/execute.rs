@@ -32,9 +32,9 @@ pub fn simulate(project: &Project, args: &[String]) {
     }
 
     println!("{:>15} {}\n{:>15} {}",
-        "> Pre-deploy changes:",
+        "Pre-deploy changes:",
         pres.len(), 
-        "> Post-deploy changes:",
+        "Post-deploy changes:",
         posts.len());
 
     // Echo pre scripts
@@ -59,7 +59,7 @@ pub fn simulate(project: &Project, args: &[String]) {
         println!("{}", line);
     } 
 
-    println!("> Deployment complete\n");
+    println!("Deployment complete\n");
 }
 
 /**
